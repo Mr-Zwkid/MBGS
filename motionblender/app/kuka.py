@@ -77,7 +77,6 @@ robot_connections = [
 
 robot_connections_int = [(robot_joints.index(a), robot_joints.index(b)) for a, b in robot_connections]
 
-
 default_joint_values = {'iiwa_joint_1': -0.15783709287643433,
  'iiwa_joint_2': 0.48583802580833435,
  'iiwa_joint_3': 1.0546152225288097e-05,
@@ -96,7 +95,6 @@ default_joint_values = {'iiwa_joint_1': -0.15783709287643433,
  'finger_1_joint_1': 0.0,
  'finger_2_joint_1': 0.0,
  'finger_middle_joint_1': 0.0}
-
 
 class Kuka(RobotInterface):
     def __init__(self, iiwa_path=os.path.dirname(__file__) + "/iiwa/kuka.urdf"):
@@ -164,7 +162,6 @@ class Kuka(RobotInterface):
         self.buf['rot6d'] = rot6d.to(self.buf['pose'].device)
         self.buf['stale'] = False
         return self.buf['rot6d']
-
 
 robot = Kuka()
 

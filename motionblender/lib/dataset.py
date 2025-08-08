@@ -27,7 +27,6 @@ class MotionBlenderIPhoneDataConfig(iPhoneDataConfig):
 
 class MotionBlenderIPhoneDataset(iPhoneDataset):
 
-    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if not self.training: return
@@ -102,9 +101,6 @@ class MotionBlenderIPhoneDataset(iPhoneDataset):
         self.cache_version = kwargs.get('cache_version', "")
         guru.warning(f"MotionBlenderIPhoneDataset cache tag -> {self.cache_version}")
     
-    
-    
-
     def get_instance_tracks_3d(
         self: BaseDataset, num_tracks_per_frame: int, step: int = 1, 
         valid_kp_thresh: float = 0.4, show_pbar: bool = True, 
@@ -340,15 +336,12 @@ class MotionBlenderGeneralDataConfig(MotionBlenderIPhoneDataConfig):
     mask_insts: list[int] = field(default_factory=lambda: [])
 
 
-
 class MotionBlenderGeneralDataset(MotionBlenderIPhoneDataset):
-
     @property
     def num_frames(self):
         if hasattr(self, 'imgs'): return len(self.imgs)
         else: return 0
     
-
     def __init__(
         self,
         data_dir: str,

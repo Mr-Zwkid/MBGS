@@ -31,11 +31,11 @@ fire
 pudb
 trimesh
 nanomesh
-transformations==2025.1.1
+# transformations==2025.1.1
 mediapy
 --extra-index-url https://download.pytorch.org/whl/cu121
-torch==2.4.1
-torchvision==0.19.1
+# torch==2.4.1
+# torchvision==0.19.1
 ipdb
 nerfview
 torchmetrics

@@ -1,7 +1,10 @@
 import os
+import sys
+# set the path to the motionblender package
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from pudb import set_trace
 from collections import Counter
-import yaml
 import random
 import gc
 from skimage.color import label2rgb
@@ -21,9 +24,14 @@ import torch.nn.functional as F
 from copy import deepcopy
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
-import tyro
-from loguru import logger as guru
-from tqdm.auto import trange, tqdm
+
+
+import tyro # for command line argument parsing
+from loguru import logger as guru # for logging
+from tqdm.auto import trange, tqdm # for progress bars
+import yaml # for YAML configuration files
+
+
 from pytorch_msssim import SSIM, ms_ssim
 import motionblender.init_utils as init_util
 from flow3d.data.iphone_dataset import (
@@ -91,12 +99,10 @@ def save_pv_vis(gs_modules: dict[str, GaussianParams], motion_modules: dict[str,
         motion.clear_motion_cache()
         plotter.render()
 
-
-
 def get_train_val_datasets(
     data_cfg: MotionBlenderGeneralDataConfig | MotionBlenderIPhoneDataConfig, load_val: bool, cameras: list[str]=[], camera_name_override: dict[str, str]={}, **kwargs
 ) -> tuple[list[MotionBlenderDataset], Dataset | None, Dataset | None]:
-    if isinstance(data_cfg, MotionBlenderGeneralDataConfig):
+    if isinstance(data_cfg, MotionBlenderGeneralDataConfig): # -> HERE
         MBDatasetClass = MotionBlenderGeneralDataset
         MBDatasetValClass = MotionBlenderGeneralDataset
     else:
@@ -106,7 +112,7 @@ def get_train_val_datasets(
 
     train_video_view = None
     val_img_dataset = None
-    if len(cameras) > 0:
+    if len(cameras) > 0: 
         assert MBDatasetClass == MotionBlenderGeneralDataset
         train_datasets = [MBDatasetClass(**asdict(data_cfg), img_prefix=c, **kwargs) for c in cameras]
         train_dataset = train_datasets[0]
@@ -116,21 +122,16 @@ def get_train_val_datasets(
     train_video_view = iPhoneDatasetVideoView(train_dataset)
 
     for D in train_datasets + [train_video_view]:
-        if D.img_prefix in camera_name_override:
+        if D.img_prefix in camera_name_override: # false
             D.img_prefix = camera_name_override[D.img_prefix]
 
     val_img_dataset = (
         MBDatasetValClass(
             **asdict(replace(data_cfg, split="val", load_from_cache=True))
-        )
-        if train_dataset.has_validation and load_val
-        else None
+        ) if train_dataset.has_validation and load_val else None
     )
     # assert all([len(D) == len(train_datasets[0]) for D in train_datasets])
     return train_datasets, train_video_view, val_img_dataset
-
-
-
 
 #ANCHOR losscfg
 @dataclass
@@ -160,7 +161,6 @@ class LossesConfig:
     qt_kp2d: float = 0.9
     qt_mask: float = 0.98
     valid_kp_thresh: float = 0.6
-
 
 @dataclass
 class TrainConfig:
@@ -222,14 +222,12 @@ class TrainConfig:
     camera_adjustment: bool = False
     camera_learnable: bool = True
     camera_adjust_limits: list[float] = field(default_factory=lambda: [])
-    stop_losses_after_iter: int = 2500
+    stop_losses_after_iter: int = 500
     stop_losses: list[str] = field(default_factory=lambda: [])  # scale_var, depth_grad, track_depth, depth, kp2d, track2d, mask
     skip_preprocess_pcd_clustering: list[str] = field(default_factory=lambda: [])
 
     skip_save_pv: bool = False
     
-
-
 def run_motion_pretrain(train_datasets: list[MotionBlenderDataset], gs_modules: nn.ModuleDict, motion_modules: dict[str, MotionBlender],
                         dict_of_track3ds: dict[str, init_util.TrackObservations] | None,
                         device="cuda", motion_init_steps: int=1000,  motion_init_batch_size: int=32, loss: LossesConfig=None,
@@ -416,7 +414,6 @@ def run_motion_pretrain(train_datasets: list[MotionBlenderDataset], gs_modules: 
             guru.info(loss_dict_to_str(loss_dict))
 
     return gs_modules, motion_modules
-
 
 def apply_global_motion(splats: SplatsDict, t: int, cam_mod: nn.ParameterDict) -> SplatsDict:
     t = int(t)
@@ -871,11 +868,10 @@ def run_full_training(gs_modules: dict[str, GaussianParams], motion_modules: dic
                 gs_model.increase_sh_degree()
     run_eval('eval' if cfg.eval_only else cfg.train_steps)
 
-
-
 def main(cfg: TrainConfig):
     ckpt_path = Path(cfg.work_dir) / 'ckpt.cpkl'
-    if cfg.test_run:
+
+    if cfg.test_run: # false
         cfg.train_steps = 10
         cfg.motion_init_steps = 10
         new_work_dir = '/tmp/motionblender-debug'
@@ -893,7 +889,7 @@ def main(cfg: TrainConfig):
         cfg.skip_save_pv = False
         guru.remove()
         guru.add(lambda msg: tqdm.write(msg, end=""), colorize=True, filter=make_guru_once_filter())
-    elif not cfg.eval_only:
+    elif not cfg.eval_only: # not false -> HERE
         backup_code(cfg.work_dir)
         guru.remove()
         guru.add(lambda msg: tqdm.write(msg, end=""), colorize=True, filter=make_guru_once_filter())
@@ -911,10 +907,10 @@ def main(cfg: TrainConfig):
         cfg.train_steps = 0
         assert 'motion_pretrained' in cfg.resume_if_possible and ckpt_path.exists()
 
-    if "SLURM_JOB_ID" in os.environ:
+    if "SLURM_JOB_ID" in os.environ: # false
         guru.info(f"SLURM_JOB_ID = {os.environ['SLURM_JOB_ID']}")
 
-    if cfg.resume_if_possible and not ckpt_path.exists():
+    if cfg.resume_if_possible and not ckpt_path.exists(): # false
         guru.info("No checkpoint found, training from scratch even though resume_if_possible is set")
         cfg.resume_if_possible = ""
     guru.info(yaml.dump(asdict(cfg), sort_keys=False, default_flow_style=False))
@@ -938,7 +934,7 @@ def main(cfg: TrainConfig):
             guru.info(f"Saving camera params to {ckpt_path}.{tag}.cam")
     
     camera_name_override = {}
-    if cfg.camera_name_override:
+    if cfg.camera_name_override: # false
         for cam_name in cfg.camera_name_override.split(","):
             a, b = cam_name.split(":")
             camera_name_override[a] = b
@@ -951,9 +947,9 @@ def main(cfg: TrainConfig):
     with open(f"{cfg.work_dir}/cfg.yaml", "w") as f:
         yaml.dump(asdict(cfg), f, default_flow_style=False)
 
-    if cfg.resume_if_possible:
+    if cfg.resume_if_possible: # false
         gs_modules, motion_modules, dict_of_track3ds, gaussian_names = load_cpkl(ckpt_path)
-    else:
+    else: # -> HERE
         gs_modules, motion_modules, dict_of_track3ds, gaussian_names = init_util.initialize_model(train_datasets, **asdict(cfg))
         guru.info("saving initialized model to {}".format(ckpt_path))
         save_checkpoint("init")
@@ -997,8 +993,5 @@ def main(cfg: TrainConfig):
     if not cfg.eval_only:
         save_checkpoint("end")
 
-
-
 if __name__ == "__main__":
     main(tyro.cli(TrainConfig))
-

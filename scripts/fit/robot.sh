@@ -66,4 +66,4 @@ case $scene in
 esac
 
 
-python ./motionblender/train.py  --work-dir $workdir  $basic_opts $train_opts $extra_opts  $data_opts
+python motionblender/train.py  --work-dir $workdir  $basic_opts $train_opts $extra_opts  $data_opts

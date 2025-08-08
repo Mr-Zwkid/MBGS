@@ -17,7 +17,6 @@ import yaml
 import os.path as osp
 import json
 from datetime import datetime
-import os
 import fire
 from tqdm.auto import trange, tqdm
 import time
@@ -31,6 +30,7 @@ import torch.nn.functional as F
 from copy import deepcopy
 from dataclasses import dataclass, field, asdict
 from loguru import logger as guru
+
 
 from flow3d.vis.utils import get_server
 from pathlib import Path
