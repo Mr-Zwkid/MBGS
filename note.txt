@@ -1,0 +1,16 @@
+canoid 323 应该是canonical frame 对应的时刻！
+humanid
+cameras
+
+data: general
+
+metric depth / aligned_depth_anything
+
+motionblender/lib/dataset.py 502 predefined_motion_graphs {'id': [frame0, frame1, ..., framen]}
+
+.pkl: j for joint number
+joints: tensor[[]] (j,3) joint position
+links [(0, 1), (1, 2), ..., (j-1, j)]
+link_poses: tensor[[[]]] (j, 4, 4) SE(3)
+type √
+joint names √

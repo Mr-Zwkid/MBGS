@@ -28,7 +28,6 @@ def rmat_to_cont_6d(matrix):
     """
     return torch.cat([matrix[..., 0], matrix[..., 1]], dim=-1)
 
-
 def cont_6d_to_rmat(cont_6d):
     """
     :param 6d vector (*, 6)
@@ -277,7 +276,6 @@ def find_link_ctrl_pt_pose(
 
 
 #endregion
-
 
 
 #region kinematic-chain

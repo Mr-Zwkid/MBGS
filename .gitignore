@@ -21,6 +21,7 @@ iiwa
 
 Grounded-SAM-2
 sapiens
+Video-Depth-Anything
 *.mp4
 
 my_data

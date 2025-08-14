@@ -104,7 +104,6 @@ class RobotInterface:
         return self.buf['pose']
 
 
-
 def textsize(text, font):
     im = Image.new(mode="P", size=(0, 0))
     draw = ImageDraw.Draw(im)
@@ -146,7 +145,6 @@ def w2c_to_opengl_camera_pose(w2c):
     return camera_pose
 
     
-    
 def client_message(client, message, title="Notice!", warning=False, danger=False, success=False, auto_close=True, loading=False):
     color = None
     if warning:
@@ -157,7 +155,6 @@ def client_message(client, message, title="Notice!", warning=False, danger=False
         color = 'green'
     client.add_notification(title, message, auto_close=auto_close, color=color, loading=loading)
     
-
 
 def find_closest_click_id(points: Float32[Tensor, "n 3"], click: ScenePointerEvent, dev: torch.device, cosine_thr=0.95):
     ray_origin, ray_dir = torch.as_tensor(click.ray_origin).to(dev), torch.as_tensor(click.ray_direction).to(dev)

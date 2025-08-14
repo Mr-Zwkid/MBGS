@@ -28,12 +28,16 @@ def map_gripper_ctrl_to_joint_v(gv):
         'finger_middle_joint_1': v
     }
 
-robot_joints = ['shoulder_pan_joint',
+robot_joints = [
+                'world_joint', # fixed
+                'shoulder_pan_joint',
                 'shoulder_lift_joint',
                 'elbow_joint',
                 'wrist_1_joint',
                 'wrist_2_joint',
                 'wrist_3_joint',
+                'ee_fixed_joint', # fixed
+                'bracket_to_dh13', # fixed
                 'right_index_joint_0',
                 'right_index_joint_1',
                 'right_index_joint_2',
@@ -49,61 +53,97 @@ robot_joints = ['shoulder_pan_joint',
                 'right_thumb_joint_0',
                 'right_thumb_joint_1',
                 'right_thumb_joint_2',
-                'right_thumb_joint_3']
+                'right_thumb_joint_3'
+                ]
 
-robot_joints_from_origin = {
-    'joint_0': 'ur5_link_0',
-    'joint_1': 'ur5_link_1',
-    'joint_2': 'ur5_link_2',
-    'joint_3': 'ur5_link_3',
-    'joint_4': 'ur5_link_4',
-    'joint_5': 'ur5_link_5',
-    'joint_6': 'ur5_link_6',
-    'joint_7': 'ur5_link_7',
-    'ee': 'ur5_link_ee',
-    'palm': 'palm',
-    'left_finger_1': ['finger_middle_link_0'],
-    'right_finger_1': ['finger_1_link_0', 'finger_2_link_0'],
-    'left_finger_2': ['finger_middle_link_3'],
-    'right_finger_2': ['finger_1_link_3', 'finger_2_link_3'],
-}
+
+robot_joints_from_origin = {                
+            'world_joint': 'base_link', # fixed
+            'shoulder_pan_joint': 'shoulder_link',
+            'shoulder_lift_joint': 'upper_arm_link',
+            'elbow_joint': 'forearm_link',
+            'wrist_1_joint': 'wrist_1_link',
+            'wrist_2_joint': 'wrist_2_link',
+            'wrist_3_joint': 'wrist_3_link',
+            'ee_fixed_joint': 'ee_link', # fixed
+            'bracket_to_dh13': 'right_palm_link', # fixed
+            'right_index_joint_0': 'right_index_link_0',
+            'right_index_joint_1': 'right_index_link_1',
+            'right_index_joint_2': 'right_index_link_2',
+            'right_index_joint_3': 'right_index_link_3',
+            'right_middle_joint_0': 'right_middle_link_0',
+            'right_middle_joint_1': 'right_middle_link_1',
+            'right_middle_joint_2': 'right_middle_link_2',
+            'right_middle_joint_3': 'right_middle_link_3',
+            'right_ring_joint_0': 'right_ring_link_0',
+            'right_ring_joint_1': 'right_ring_link_1',
+            'right_ring_joint_2': 'right_ring_link_2',
+            'right_ring_joint_3': 'right_ring_link_3',
+            'right_thumb_joint_0': 'right_thumb_link_0',
+            'right_thumb_joint_1': 'right_thumb_link_1',
+            'right_thumb_joint_2': 'right_thumb_link_2',
+            'right_thumb_joint_3': 'right_thumb_link_3'
+        }
 
 robot_connections = [
-    ['joint_0', 'joint_1'],
-    ['joint_1', 'joint_2'],
-    ['joint_2', 'joint_3'],
-    ['joint_3', 'joint_4'],
-    ['joint_4', 'joint_5'],
-    ['joint_5', 'joint_6'],
-    ['joint_6', 'joint_7'],
-    ['joint_7', 'ee'],
-    ['ee', 'palm'],
-    ['palm', 'left_finger_1'],
-    ['palm', 'right_finger_1'],
-    ['left_finger_1', 'left_finger_2'],
-    ['right_finger_1', 'right_finger_2'],
+    ('world_joint', 'shoulder_pan_joint'),
+    ('shoulder_pan_joint', 'shoulder_lift_joint'),
+    ('shoulder_lift_joint', 'elbow_joint'),
+    ('elbow_joint', 'wrist_1_joint'),
+    ('wrist_1_joint', 'wrist_2_joint'),
+    ('wrist_2_joint', 'wrist_3_joint'),
+    ('wrist_3_joint', 'ee_fixed_joint'),
+    ('ee_fixed_joint', 'bracket_to_dh13'),
+
+    ('bracket_to_dh13', 'right_index_joint_0'),
+    ('right_index_joint_0', 'right_index_joint_1'),
+    ('right_index_joint_1', 'right_index_joint_2'),
+    ('right_index_joint_2', 'right_index_joint_3'),
+
+    ('bracket_to_dh13', 'right_middle_joint_0'),
+    ('right_middle_joint_0', 'right_middle_joint_1'),
+    ('right_middle_joint_1', 'right_middle_joint_2'),
+    ('right_middle_joint_2', 'right_middle_joint_3'),
+
+    ('bracket_to_dh13', 'right_ring_joint_0'),
+    ('right_ring_joint_0', 'right_ring_joint_1'),
+    ('right_ring_joint_1', 'right_ring_joint_2'),
+    ('right_ring_joint_2', 'right_ring_joint_3'),
+
+    ('bracket_to_dh13', 'right_thumb_joint_0'),
+    ('right_thumb_joint_0', 'right_thumb_joint_1'),
+    ('right_thumb_joint_1', 'right_thumb_joint_2'),
+    ('right_thumb_joint_2', 'right_thumb_joint_3')
 ]
 
 robot_connections_int = [(robot_joints.index(a), robot_joints.index(b)) for a, b in robot_connections]
 
-default_joint_values = {'ur5_joint_1': -0.15783709287643433,
- 'ur5_joint_2': 0.48583802580833435,
- 'ur5_joint_3': 1.0546152225288097e-05,
- 'ur5_joint_4': -1.6795016527175903,
- 'ur5_joint_5': 0.9391155242919922,
- 'ur5_joint_6': 1.027316689491272,
- 'ur5_joint_7': -1.273979663848877,
- 'palm_finger_1_joint': -0.16,
- 'palm_finger_2_joint': 0.16,
- 'finger_middle_joint_3': 0,
- 'finger_middle_joint_2': 0,
- 'finger_2_joint_3': 0,
- 'finger_2_joint_2': 0,
- 'finger_1_joint_3': 0,
- 'finger_1_joint_2': 0,
- 'finger_1_joint_1': 0.0,
- 'finger_2_joint_1': 0.0,
- 'finger_middle_joint_1': 0.0}
+default_joint_values = {
+
+    'shoulder_pan_joint': 0.0,
+    'shoulder_lift_joint': 0.0,
+    'elbow_joint': 0.0,
+    'wrist_1_joint': 0.0,
+    'wrist_2_joint': 0.0,
+    'wrist_3_joint': 0.0,
+
+    'right_index_joint_0': 0.0,
+    'right_index_joint_1': 0.17453292519943295,
+    'right_index_joint_2': 0.17453292519943295,
+    'right_index_joint_3': 0.0,
+    'right_middle_joint_0': 0.0,
+    'right_middle_joint_1': 0.17453292519943295,
+    'right_middle_joint_2': 0.17453292519943295,
+    'right_middle_joint_3': 0.0,
+    'right_ring_joint_0': 0.0,
+    'right_ring_joint_1': 0.17453292519943295,
+    'right_ring_joint_2': 0.17453292519943295,
+    'right_ring_joint_3': 0.0,
+    'right_thumb_joint_0': 0.0,
+    'right_thumb_joint_1': 0.0,
+    'right_thumb_joint_2': 0.0,
+    'right_thumb_joint_3': 0.0
+}
 
 class UR5(RobotInterface):
     def __init__(self, ur5_path="my_data/ur5_dh13_combined.urdf"):
@@ -111,9 +151,9 @@ class UR5(RobotInterface):
         txt = open(ur5_path, 'rb').read()
         self.ur5_serial_chain = kp.build_serial_chain_from_urdf(txt, 'right_palm_link')
         self.ur5_chain = kp.build_chain_from_urdf(txt)
-        # self.joint_names = [f'ur5_joint_{i}' for i in range(1, 8)]
-        # self.curr_jvs = np.array([default_joint_values[jname] for jname in self.joint_names])
-        # self.buf['rot6d'] = None
+        self.joint_names = ['shoulder_pan_joint', 'shoulder_lift_joint', 'elbow_joint', 'wrist_1_joint', 'wrist_2_joint', 'wrist_3_joint']
+        self.curr_jvs = np.array([default_joint_values[jname] for jname in self.joint_names])
+        self.buf['rot6d'] = None
     
     def _joint_values_to_rot6d(self, joint_values):
         link_poses = self.ur5_chain.forward_kinematics(joint_values)

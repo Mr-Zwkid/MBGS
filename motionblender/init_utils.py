@@ -329,7 +329,7 @@ def initialize_model(train_datasets: list[MotionBlenderDataset], num_bg=-1, num_
             train_datasets = [train_datasets[0]]
         use_tracks = False
 
-    if use_tracks:
+    if use_tracks: # false
         guru.info("loading tracks")
         # merging tracks from all datasets
         track3ds = [TrackObservations(*train_dataset.get_instance_tracks_3d(num_tracks_per_frame)) for train_dataset in train_datasets]
@@ -358,7 +358,7 @@ def initialize_model(train_datasets: list[MotionBlenderDataset], num_bg=-1, num_
         cano_t = train_datasets[0].given_cano_t
         num_frames = train_datasets[0].num_all_frames_in_scene
 
-    if use_tracks:
+    if use_tracks: # false
         guru.info("initializing instances with 3d tracks")
         preinit_motion_graphs =  getattr(train_datasets[0], 'preinited_motion_graphs', None)
 
