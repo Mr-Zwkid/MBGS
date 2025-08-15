@@ -601,7 +601,19 @@ def run_full_training(gs_modules: dict[str, GaussianParams], motion_modules: dic
 
     ctrl.control_cache = { 'img_wh': [], 'radii': [], 'xys': [] }
 
+
     for step in trange(cfg.train_steps):
+        def save_visualization(name, img, save_step):
+            # visualize instance masks
+            if step != save_step:
+                return
+            print(f'saving {name} visualization')
+            import matplotlib.pyplot as plt
+            plt.imshow(img.detach().squeeze(0).cpu().numpy(), cmap='jet')
+            plt.axis('off')
+            plt.savefig(work_dir / f'{name}_step{step}.png', bbox_inches='tight', pad_inches=0)
+            plt.close()
+
         loss_dict = {}
         clear_motion_cache_at_t(motion_modules)
         batch = next(train_iter)
@@ -620,12 +632,18 @@ def run_full_training(gs_modules: dict[str, GaussianParams], motion_modules: dic
         masks *= valid_masks
         imasks = batch["instance_masks"].long() # (B, H, W)
         imasks *= (masks > 0.5) # only keep fg
+
+        save_visualization('imgs', imgs[0], 50)
+        save_visualization('valid_masks', valid_masks[0], 50)
+        save_visualization('masks', masks[0], 50)
+        save_visualization('imasks', imasks[0], 50)
+
         imasks_oh = F.one_hot(imasks, num_classes=num_instances+1)[..., 1:] # (B, H, W, num_instances)
 
         depths = batch["depths"] # (B, H, W).
         gt_kps2d = batch['kps2d'] if 'kps2d' in batch else None
 
-        if cfg.data.use_tracks:
+        if cfg.data.use_tracks: # false
             N = batch["target_ts"][0].shape[0]
             query_tracks_2d = batch["query_tracks_2d"] # track at time t,  [(P, 2), ...].
             target_ts = batch["target_ts"] #  [(N,), ...].
@@ -723,6 +741,18 @@ def run_full_training(gs_modules: dict[str, GaussianParams], motion_modules: dic
         if step == 0: guru.error(f"note: valid image ratio roughly is {valid_ratio}")
 
         rendered_imgs = rendered_all['color'] * valid_masks[..., None] + (1.0 - valid_masks[..., None])
+
+        save_visualization('render_colors', rendered_imgs[0], 50)
+        save_visualization('render_colors', rendered_imgs[0], 150)
+        save_visualization('render_colors', rendered_imgs[0], 250)
+        save_visualization('render_colors', rendered_imgs[0], 550)
+
+        save_visualization('gt_colors', imgs[0], 50)
+        save_visualization('gt_colors', imgs[0], 150)
+        save_visualization('gt_colors', imgs[0], 250)
+        save_visualization('gt_colors', imgs[0], 550)
+
+
         rgb_loss = 0.8 * F.l1_loss(rendered_imgs, imgs) + 0.2 * (1 - ssim(rendered_imgs.permute(0, 3, 1, 2), imgs.permute(0, 3, 1, 2)))
         loss_dict['rgb'] = rgb_loss * cfg.loss.w_rgb #/ valid_ratio
 
@@ -869,6 +899,9 @@ def run_full_training(gs_modules: dict[str, GaussianParams], motion_modules: dic
     run_eval('eval' if cfg.eval_only else cfg.train_steps)
 
 def main(cfg: TrainConfig):
+    # debug
+    cfg.fg_only = False
+
     ckpt_path = Path(cfg.work_dir) / 'ckpt.cpkl'
 
     if cfg.test_run: # false

@@ -10,7 +10,7 @@ motionblender/lib/dataset.py 502 predefined_motion_graphs {'id': [frame0, frame1
 
 .pkl: j for joint number
 joints: tensor[[]] (j,3) joint position
-links [(0, 1), (1, 2), ..., (j-1, j)]
+links [(0, 1), (1, 2), ..., (j-1, j)] √
 link_poses: tensor[[[]]] (j, 4, 4) SE(3)
 type √
 joint names √

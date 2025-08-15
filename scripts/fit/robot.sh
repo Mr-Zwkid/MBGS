@@ -10,6 +10,9 @@ train_opts="--train-steps 40000"
 case $scene in
     robot)
         canoid=323
+        ;;    
+    ur5_ep3)
+        canoid=0
         ;;
     microwave)
         canoid=0
@@ -52,6 +55,9 @@ basic_opts="--fg-only  --loss.w-smooth-motion 1.0  $camera_opts
 
 case $scene in
     robot)
+        basic_opts=$basic_opts" --loss.w-smooth-motion 0.0 --loss.w-sparse-link-assignment 0.0  --loss.w-minimal-movement-in-cano 0.0  --loss.w-rgb 2.0"
+    ;;
+    ur5_ep3)
         basic_opts=$basic_opts" --loss.w-smooth-motion 0.0 --loss.w-sparse-link-assignment 0.0  --loss.w-minimal-movement-in-cano 0.0  --loss.w-rgb 2.0"
     ;;
     microwave)
