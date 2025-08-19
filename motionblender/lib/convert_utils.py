@@ -20,6 +20,9 @@ def get_pointcloud_from_rgb_depth_cam(rgb, depths, c2w, X_2d3d, image_w, image_h
     rays = np.stack((u, v, np.ones_like(u)), axis=0)  # (3, H*W)
     rays = torch.from_numpy(rays)
     rgbs = rgb.flatten(0, 1)
+
+    # print('X_2d3d', X_2d3d)
+    # print('c2w', c2w)
     
     p_Wraysd = torch.inverse(X_2d3d) @ rays
     p_Wraysd = p_Wraysd.permute(1, 0)

@@ -435,11 +435,11 @@ def run_full_training(gs_modules: dict[str, GaussianParams], motion_modules: dic
                       train_video_view: BaseDataset, val_img_dataset: BaseDataset, cfg: TrainConfig, device: str="cuda",
                       save_callback=lambda: None, camera_state_dict = None):
     if not cfg.fg_only: assert gaussian_names[-1] == 'bg'
-    num_instances = len(to_fg_names(gaussian_names))
+    num_instances = len(to_fg_names(gaussian_names)) # 1
     num_frames = train_datasets[0].num_all_frames_in_scene # NOTE: num_frames is the total time
     work_dir = Path(cfg.work_dir)
 
-    if cfg.camera_adjustment:
+    if cfg.camera_adjustment: # false
         cam_names = [train_dataset.img_prefix for train_dataset in train_datasets]
         if cam_names != cfg.cameras:
             guru.error(f"Camera names from data ({cam_names}) do not match the camera names in config ({cfg.cameras})")
@@ -623,7 +623,9 @@ def run_full_training(gs_modules: dict[str, GaussianParams], motion_modules: dic
 
         ts = batch["ts"] # (B,).
         w2cs = batch["w2cs"] # (B, 4, 4).
+        # print(w2cs[0])
         cam_centers = torch.inverse(w2cs)[:, :3, 3] # (B, 3)
+        # print(torch.inverse(w2cs[0]))
 
         Ks = batch["Ks"] # (B, 3, 3).
         imgs = batch["imgs"] # (B, H, W, 3).
@@ -670,9 +672,14 @@ def run_full_training(gs_modules: dict[str, GaussianParams], motion_modules: dic
         points_cache, gs_cache = {}, {}
         for g in gaussian_names:
             gs_cache[g] = {'scales': gs_modules[g].get_scales(), 'opacities': gs_modules[g].get_opacities() }
+            # print('motion_modules', motion_modules)
             if g in motion_modules:
                 for t in all_ts:
+                    # print('gs_modules[g].means', gs_modules[g].means, 't', t)
+                    # print('gs_modules[g].get_quats()', gs_modules[g].get_quats())
                     means, quats = motion_modules[g].transform_splats_to_t(gs_modules[g].means, t, cano_quats_wxyz=gs_modules[g].get_quats())
+                    # print(f"means {means.max()} min {means.min()} mean {means.mean()}")
+                    # print(f"quats {quats.max()} min {quats.min()} mean {quats.mean()}")
                     points_cache[(g, t)] = means, quats
             else:
                 points_cache[g] = gs_modules[g].means, gs_modules[g].get_quats()
@@ -682,14 +689,22 @@ def run_full_training(gs_modules: dict[str, GaussianParams], motion_modules: dic
         for bi in range(B):
             splats: SplatsDict = {}
             for gi, g in enumerate(gaussian_names):
+                
                 t = int(ts[bi])
                 means, quats = points_cache[(g, t)] if g in motion_modules else points_cache[g]
+
+                # print(f"Processing {g} at batch index {bi}, time {ts[bi]}")
+                # print(f"means {means.max()} min {means.min()} mean {means.mean()}")
+                # print(f"quats {quats.max()} min {quats.min()} mean {quats.mean()}")
+                # print(f"scales {gs_cache[g]['scales'].max()} min {gs_cache[g]['scales'].min()} mean {gs_cache[g]['scales'].mean()}")
+                # print(f"opacities {gs_cache[g]['opacities'].max()} min {gs_cache[g]['opacities'].min()} mean {gs_cache[g]['opacities'].mean()}")
+
                 splats.setdefault("means", []).append(means)
                 splats.setdefault("quats", []).append(quats)
                 splats.setdefault("scales", []).append(gs_cache[g]['scales'])
                 splats.setdefault("opacities", []).append(gs_cache[g]['opacities'])
                 colors = gs_modules[g].get_colors(means, cam_centers[bi])
-                if g == 'bg':
+                if g == 'bg': # false
                     colors = torch.cat([colors, bg_color[:, 3:].repeat(len(colors), 1)], dim=-1)
                 else:
                     # instance mask
@@ -698,7 +713,7 @@ def run_full_training(gs_modules: dict[str, GaussianParams], motion_modules: dic
                     colors = torch.cat([colors, torch.as_tensor(inst_flag).to(device).float().reshape(1, -1).repeat(len(colors), 1)], dim=-1)
 
                     # track
-                    if cfg.data.use_tracks:
+                    if cfg.data.use_tracks: # false
                         target_means = []
                         for t in target_ts[bi]: target_means.append(points_cache.get((g, int(t)), points_cache.get(g, None))[0])
                         target_means = torch.stack(target_means).transpose(0, 1) # (P, N, 3)
@@ -710,7 +725,7 @@ def run_full_training(gs_modules: dict[str, GaussianParams], motion_modules: dic
                 splats.setdefault("colors", []).append(colors)
 
             splats = {k:torch.cat(v) for k, v in splats.items()}
-            if cfg.camera_adjustment:
+            if cfg.camera_adjustment: # false
                 _bi_cam_name = batch['cam_name'][bi]
                 splats = apply_global_motion(splats, int(ts[bi]), camera_module[_bi_cam_name])
             render_colors, alphas, info = render(splats, w2cs[bi], Ks[bi], img_wh, bg_color, engine=cfg.render_engine)
@@ -742,6 +757,7 @@ def run_full_training(gs_modules: dict[str, GaussianParams], motion_modules: dic
 
         rendered_imgs = rendered_all['color'] * valid_masks[..., None] + (1.0 - valid_masks[..., None])
 
+        save_visualization('render_colors', rendered_imgs[0], 0)
         save_visualization('render_colors', rendered_imgs[0], 50)
         save_visualization('render_colors', rendered_imgs[0], 150)
         save_visualization('render_colors', rendered_imgs[0], 250)
@@ -900,7 +916,7 @@ def run_full_training(gs_modules: dict[str, GaussianParams], motion_modules: dic
 
 def main(cfg: TrainConfig):
     # debug
-    cfg.fg_only = False
+    cfg.fg_only = True
 
     ckpt_path = Path(cfg.work_dir) / 'ckpt.cpkl'
 
@@ -993,10 +1009,10 @@ def main(cfg: TrainConfig):
         assert dict_of_track3ds is not None
         motion_modules = motion_modules.to(device)
         gs_modules = gs_modules.to(device)
-        if cfg.data.use_tracks and not cfg.init_with_rgbd:
+        if cfg.data.use_tracks and not cfg.init_with_rgbd: # false
             gs_modules, motion_modules = run_motion_pretrain(train_datasets, gs_modules, motion_modules, dict_of_track3ds, device=device, **asdict(cfg))
             save_checkpoint("motion_pretrained")
-        elif has_kp2d:
+        elif has_kp2d: # false
             gs_modules, motion_modules = run_motion_pretrain(train_datasets, gs_modules, motion_modules, None, device=device, **asdict(cfg))
             save_checkpoint("motion_pretrained")
         else:

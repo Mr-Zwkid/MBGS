@@ -11,7 +11,7 @@ case $scene in
     robot)
         canoid=323
         ;;    
-    ur5_ep3)
+    ur5_ep4)
         canoid=0
         ;;
     microwave)
@@ -57,7 +57,7 @@ case $scene in
     robot)
         basic_opts=$basic_opts" --loss.w-smooth-motion 0.0 --loss.w-sparse-link-assignment 0.0  --loss.w-minimal-movement-in-cano 0.0  --loss.w-rgb 2.0"
     ;;
-    ur5_ep3)
+    ur5_ep4)
         basic_opts=$basic_opts" --loss.w-smooth-motion 0.0 --loss.w-sparse-link-assignment 0.0  --loss.w-minimal-movement-in-cano 0.0  --loss.w-rgb 2.0"
     ;;
     microwave)

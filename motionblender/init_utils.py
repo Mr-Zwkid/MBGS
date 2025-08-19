@@ -33,6 +33,7 @@ from motionblender.lib.params import merge_splat_dicts
 import motionblender.lib.init_graph.human_kinematic_tree_lifting as khuman_init
 import motionblender.lib.convert_utils as cvt
 from flow3d.vis.utils import project_2d_tracks
+import trimesh
 import motionblender.lib.animate as anim
 import motionblender.lib.pv as pv
 
@@ -605,18 +606,25 @@ def initialize_model(train_datasets: list[MotionBlenderDataset], num_bg=-1, num_
         img_h, img_w = train_dataset.imgs[cano_img_id].shape[:2]
 
         pts_list, rgbs_list, imasks_list = [], [], []
+        # print('train_datasets', train_datasets)
         for D in train_datasets: # iterate all datasets, get the whole point cloud at time cano_t
+            # print('D.time_ids', D.time_ids, 'cano_t', cano_t)
             cano_img_id = (D.time_ids == cano_t).nonzero().flatten().item()
+            # print('cano_img_id', cano_img_id, 'D.imgs.shape', D.imgs.shape, 'D.depths.shape', D.depths.shape, 'D.w2cs.shape', D.w2cs.shape, 'D.Ks.shape', D.Ks.shape)
             rgb = D.imgs[cano_img_id]
             depth = D.depths[cano_img_id]
             pts, rgbs = cvt.get_pointcloud_from_rgb_depth_cam(rgb, depth, torch.inverse(D.w2cs[cano_img_id]), 
                                                 D.Ks[cano_img_id], img_w, img_h)
+            trimesh.PointCloud(pts.cpu().numpy()).export(f"{work_dir}/cano_pts.ply")
             imask = D.instance_masks[cano_img_id]
             rgbs_list.append(rgbs)
             pts_list.append(pts)
             imasks_list.append(imask.flatten())
 
+        # print('pts_list', len(pts_list), 'rgbs_list', len(rgbs_list), 'imasks_list', len(imasks_list))
+
         pts, rgbs, imasks = torch.cat(pts_list), torch.cat(rgbs_list), torch.cat(imasks_list)
+        # print('pts', pts.shape, 'rgbs', rgbs.shape, 'imasks', imasks.shape)
 
         predefined_motion_graphs = train_dataset.predefined_motion_graphs
         preinit_motion_graphs =  train_dataset.preinited_motion_graphs
@@ -640,7 +648,7 @@ def initialize_model(train_datasets: list[MotionBlenderDataset], num_bg=-1, num_
                                                    use_sh_color=use_sh_color, init_opacity=0.1)
             gaussian_names.append(inst_name)
 
-            if predefined_motion_graphs is not None and inst_id in predefined_motion_graphs: 
+            if predefined_motion_graphs is not None and inst_id in predefined_motion_graphs: # -> Here
                 assert not train_dataset.normalize_scene, "predefined motion graph is not supported for normalized scene at this moment"
                 assert motion_type == MotionBlenderType.kinematic
                 inst_predefined_motion_graphs = predefined_motion_graphs[inst_id]
@@ -673,6 +681,7 @@ def initialize_model(train_datasets: list[MotionBlenderDataset], num_bg=-1, num_
                 motion.global_ts.requires_grad = False
                 motion.length.requires_grad = False
                 motion.rot6d.requires_grad = False
+
             elif preinit_motion_graphs is not None and inst_id in preinit_motion_graphs:
                 assert not train_dataset.normalize_scene, "preinit motion graph is not supported for normalized scene at this moment"
                 assert motion_type in [MotionBlenderType.deformable, MotionBlenderType.kinematic]
@@ -730,7 +739,6 @@ def initialize_model(train_datasets: list[MotionBlenderDataset], num_bg=-1, num_
                                     use_radiance_kernel=False, deformable_link_quantize=deformable_link_quantize)
                 
                 register_remaining_preinit_motions(preinit_motion_graphs[inst_id], motion)
-
             elif motion_type == MotionBlenderType.deformable:
                 guru.info(f"initializing deformable motion for {inst_name}")
                 num_vertices = get_num_vertices_for_deformable(inst_id)
@@ -754,7 +762,6 @@ def initialize_model(train_datasets: list[MotionBlenderDataset], num_bg=-1, num_
                                     links=tri_links, init_gamma=init_gamma, init_temperature=init_temperature, nearest_k=nearest_k_links,
                                     blend_method=blend_method, joints=repeat(joints, "j c -> t j c", t=num_frames).clone(), 
                                     use_radiance_kernel=get_rad_kernel(inst_name, 'deformable'), deformable_link_quantize=deformable_link_quantize)
-
             elif motion_type == MotionBlenderType.rigid:
                 guru.info(f"initializing rigid motion for {inst_name}")
                 global_rot6d = anim.rmat_to_cont_6d(torch.eye(3))
@@ -800,6 +807,7 @@ def initialize_model(train_datasets: list[MotionBlenderDataset], num_bg=-1, num_
         assert bg_points.check_sizes()
         dict_of_gaussians["bg"] = init_gs(bg_points, use_sh_color=use_sh_color, init_opacity=0.1, filter_outliers=True)
         gaussian_names.append("bg")
-    
-    gs_modules, motion_modules = nn.ModuleDict(dict_of_gaussians), nn.ModuleDict(dict_of_motions)  
+
+    gs_modules, motion_modules = nn.ModuleDict(dict_of_gaussians), nn.ModuleDict(dict_of_motions)
+    # print('dict_of_gaussians', dict_of_gaussians)
     return gs_modules, motion_modules, dict_of_track3ds, gaussian_names

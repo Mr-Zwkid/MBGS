@@ -145,7 +145,6 @@ class MotionBlender(nn.Module):
             self.register_buffer('cano_joints', self._joints_tensor_cache[cano_t].detach())
         self.clear_motion_cache() 
     
-    
     @torch.no_grad()
     def update_cano_info(self):
         self.clear_motion_cache()
@@ -177,7 +176,6 @@ class MotionBlender(nn.Module):
         self._skin_weights = _.values
         self._skin_weights /= self._skin_weights.sum(dim=1, keepdim=True)
         self._skin_weights_index = _.indices
-    
     
     def compute_link_pose_at_t(self, t, skin_pts: Float32[Tensor, "n 3"]=None, pose_store: PoseStore | None=None):
         t = int(t)
@@ -235,27 +233,32 @@ class MotionBlender(nn.Module):
                 length = torch.exp(length)
             else:
                 length = length * torch.exp(self.log_length_scale)
+            # print('length', length.shape, length)
             
             if pose_store is not None:
                 rot6d = pose_store.rot6ds.to(dev).clone()
                 assert rot6d.shape == self.rot6d[0].shape
             else:
                 rot6d = self.rot6d[t]
+            # print('rot6d', rot6d.shape, rot6d)
             
             chain = anim.fill_hollow_chain_with_tensor(self.hollow_chain, length, rot6d, 
                                     self.rot6d_linkid2indice, self.length_linkid2indice)
             t_rel_link_poses = anim.forward_kinematic(chain)
+            # print('t_rel_link_poses', t_rel_link_poses.shape, t_rel_link_poses)
             link_poses = anim.apply_mat4_pose(global_T, t_rel_link_poses)
+            # print(f"link_poses {link_poses.shape} {link_poses}")
             joint_poses = anim.link_poses_to_joint_positions(link_poses, self.hollow_chain['id'], global_T[:3, 3])  
+            # print(f"joint_poses {joint_poses.shape} {joint_poses}")
             if skin_pts is not None and t == self.cano_t:
+                # print(f"skin_pts {skin_pts.shape} {skin_pts}")
                 self._skin_weights = anim.weight_inpaint(skin_pts, joint_poses, self.links, 
                     gamma=self.radiance_kernels if getattr(self, 'use_radiance_kernel', False) else torch.exp(self.log_gamma), 
                     temperature=torch.exp(self.log_temperature), return_falloff=False)
+                # print('self._skin_weights', self._skin_weights.shape, self._skin_weights)
         
         self._links_tensor_cache[t] = link_poses
         self._joints_tensor_cache[t] = joint_poses
-
-
 
     def clear_motion_cache(self, t: int | None = None):
         if t is None:
@@ -273,6 +276,7 @@ class MotionBlender(nn.Module):
 
     def transform_splats_to_t(self, cano_means: Float32[Tensor, "n 3"],  t: int, cano_quats_wxyz: Float32[Tensor, "n 4"] = None, pose_store: PoseStore | None = None) -> Float32[Tensor, "n 3"] | tuple[Float32[Tensor, "n 3"], Float32[Tensor, "n 4"]]:
         skinned_mat4 = self.get_transformation_at_t(cano_means, t, pose_store=pose_store)
+        # print(f"skinned_mat4: {skinned_mat4}")
         pred_means_t = anim.apply_mat4(skinned_mat4, cano_means)
         if cano_quats_wxyz is None: return pred_means_t
         else:
@@ -306,14 +310,17 @@ class MotionBlender(nn.Module):
         
     def get_transformation_at_t(self, cano_means: Float32[Tensor, "n 3"], t: int, pose_store: PoseStore | None = None) -> Float32[Tensor, "n 4 4"]:
         t = int(t)
+        # print('cano_means', cano_means.shape, cano_means)
         if self.cano_t not in self._global_T_cache:
             self.compute_link_pose_at_t(self.cano_t, skin_pts=cano_means)
 
         self.compute_link_pose_at_t(t, pose_store=pose_store) # +20
-        if self.type == MotionBlenderType.rigid:
+        # print(self.type) # kinematic
+        if self.type == MotionBlenderType.rigid: # false
             cano_link_poses, t_link_poses = self._global_T_cache[self.cano_t], self._global_T_cache[t]
         else:
             cano_link_poses, t_link_poses = self._links_tensor_cache[self.cano_t], self._links_tensor_cache[t]
+            # print(f"cano_link_poses: {cano_link_poses}, t_link_poses: {t_link_poses}") 
 
         # if t == self.cano_t and self.flexible_cano:
         #     # t_link_poses = cano_link_poses
@@ -323,17 +330,17 @@ class MotionBlender(nn.Module):
         # else:
         Ts = anim.find_T_between_poses(cano_link_poses.reshape(-1, 4, 4), 
                         t_link_poses.reshape(-1, 4, 4)).reshape(*t_link_poses.shape[:-2], 4, 4) # + 16MB
+        # print(f"Ts: {Ts}")
 
-        if self.type == MotionBlenderType.rigid:
+        if self.type == MotionBlenderType.rigid: # false
             skinned_mat4 = repeat(Ts, "a b -> x a b", x=len(cano_means))
         else:
-            if self.type == MotionBlenderType.deformable and getattr(self, 'deformable_link_quantize', -1) > 0:
+            if self.type == MotionBlenderType.deformable and getattr(self, 'deformable_link_quantize', -1) > 0: # false
                 oshape = self._falloffs.shape
                 Ts = Ts[self._falloffs_q.flatten(), self._skin_weights_index.flatten()].reshape(*oshape, 4, 4)
             skinned_mat4 = anim.skinning(self._skin_weights, Ts, blend_mode=self.blend_method) # +20MB
         return skinned_mat4
     
-
     def regularization(self, reg_type: str, **kwargs):
         loss_dict = {}
         if reg_type == 'smooth_motion':

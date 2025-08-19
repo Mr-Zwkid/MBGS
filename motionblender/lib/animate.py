@@ -157,15 +157,16 @@ def compute_distance_from_link(points: Float32[Tensor, "p c"],
     return: (p, b), (p, b, 3), (p, b)
     """
     link_directions = link_ends - link_starts # AB, shape: (b, 3)
+    # print('link_directions', link_directions.shape, link_directions)
     points_to_starts = points.unsqueeze(1) - link_starts.unsqueeze(0)  # AC shape: (p, b, 3)
     t = einsum(points_to_starts, link_directions, 'p b c, b c -> p b') \
-        / einsum(link_directions, link_directions, 'b c, b c -> b').unsqueeze(0)
+        / (einsum(link_directions, link_directions, 'b c, b c -> b').unsqueeze(0) + 1e-8)
     t = torch.clamp(t, 0.0, 1.0)
     
     closest_points = link_starts.unsqueeze(0) + einsum(t, link_directions, 'p b, b c -> p b c') # AD shape: (p, b, 3)
     unnormed_radiance = points.unsqueeze(1) - closest_points
     distances = torch.norm(unnormed_radiance, dim=2)  # shape: (p, b)
-    radiance_direction = F.normalize(unnormed_radiance, dim=2) # shape: (p, b, 3)
+    radiance_direction = F.normalize(unnormed_radiance, dim=2, eps=1e-8) # shape: (p, b, 3)
     return distances, radiance_direction, t
 
 # for raidiance gaussian kernel
@@ -224,7 +225,8 @@ def weight_inpaint(pts: Float32[Tensor, "p c"], joints: Float32[Tensor, "j c"],
         [0.5000, 0.5000],
         [0.0069, 0.9931]])
     """
-    distances, radiance_dirs, falloff = compute_distance_from_link(pts, joints[connections[:, 0]], joints[connections[:, 1]]) 
+    distances, radiance_dirs, falloff = compute_distance_from_link(pts, joints[connections[:, 0]], joints[connections[:, 1]])
+    # print('distances', distances, 'radiance_dirs', radiance_dirs, 'falloff', falloff)
 
     if isinstance(gamma, (nn.Module, list)): 
         lst_of_radiance_functions = gamma
@@ -533,14 +535,18 @@ def skinning(weights: Float32[Tensor, "p m"],  mat4s: Float32[Tensor, "m 4 4"] |
             mat4s = repeat(mat4s, 'm a b -> p m a b', p=len(weights))
         else: assert len(mat4s.shape) == 4
         return einsum(weights, mat4s, 'p m, p m a b -> p a b')
-    else:
+    else: # dual quaternion blending
+        # print(mat4s.shape, weights.shape)
         if len(mat4s.shape) == 3:
             dqs = dual_quat_from_mat(mat4s) # m 8
             dqs = repeat(dqs, "m a -> p m a", p=len(weights))
         else:
             dqs = rearrange(dual_quat_from_mat(rearrange(mat4s, 'p m a b -> (p m) a b')), 
                             '(p m) a -> p m a', p=len(weights))
+        # print('dqs', dqs.shape, dqs)
+        # print('weights', weights.shape, weights)
         q = einsum(weights, dqs, 'p m, p m a -> p a')
+        # print('q', q)
         q = dual_quat_normalize(q)
         return dual_quat_to_mat(q)
 
