@@ -635,10 +635,10 @@ def run_full_training(gs_modules: dict[str, GaussianParams], motion_modules: dic
         imasks = batch["instance_masks"].long() # (B, H, W)
         imasks *= (masks > 0.5) # only keep fg
 
-        save_visualization('imgs', imgs[0], 50)
-        save_visualization('valid_masks', valid_masks[0], 50)
-        save_visualization('masks', masks[0], 50)
-        save_visualization('imasks', imasks[0], 50)
+        save_visualization('imgs', imgs[0], 500)
+        save_visualization('valid_masks', valid_masks[0], 500)
+        save_visualization('masks', masks[0], 500)
+        save_visualization('imasks', imasks[0], 500)
 
         imasks_oh = F.one_hot(imasks, num_classes=num_instances+1)[..., 1:] # (B, H, W, num_instances)
 
@@ -757,17 +757,8 @@ def run_full_training(gs_modules: dict[str, GaussianParams], motion_modules: dic
 
         rendered_imgs = rendered_all['color'] * valid_masks[..., None] + (1.0 - valid_masks[..., None])
 
-        save_visualization('render_colors', rendered_imgs[0], 0)
-        save_visualization('render_colors', rendered_imgs[0], 50)
-        save_visualization('render_colors', rendered_imgs[0], 150)
-        save_visualization('render_colors', rendered_imgs[0], 250)
-        save_visualization('render_colors', rendered_imgs[0], 550)
-
-        save_visualization('gt_colors', imgs[0], 50)
-        save_visualization('gt_colors', imgs[0], 150)
-        save_visualization('gt_colors', imgs[0], 250)
-        save_visualization('gt_colors', imgs[0], 550)
-
+        save_visualization('render_colors', rendered_imgs[0], 500)
+        save_visualization('gt_colors', imgs[0], 500)
 
         rgb_loss = 0.8 * F.l1_loss(rendered_imgs, imgs) + 0.2 * (1 - ssim(rendered_imgs.permute(0, 3, 1, 2), imgs.permute(0, 3, 1, 2)))
         loss_dict['rgb'] = rgb_loss * cfg.loss.w_rgb #/ valid_ratio

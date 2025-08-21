@@ -1,5 +1,6 @@
 import os
-import shutil
+import sys
+sys.path.insert(0, '/home/zhangwenkang/Projects/MBGS')
 
 if "CUDA_VISIBLE_DEVICES" in os.environ:
     dev = os.environ["CUDA_VISIBLE_DEVICES"].split(",")[0]
@@ -7,6 +8,7 @@ else:
     dev = "0"
 os.environ["PYOPENGL_PLATFORM"] = "egl"
 os.environ["EGL_DEVICE_ID"] = dev
+import shutil
 
 import pyrender
 import trimesh
@@ -340,7 +342,7 @@ class MotionBlenderApp(Viewer):
             body['general.preview'] = server.gui.add_button("Preview & Sync (RGB)", color="green")
             def make_cam_pose_hint(): return f"0-{self.num_frames-1}," + (",".join(sorted(state.cam_poses.keys()) + ['$']))
             # body['general.preview_cam_id'] = gui.add_text("Preview Cam ID", initial_value="0", hint=make_cam_pose_hint())
-            body['general.preview.img'] = gui.add_image(np.full([100, 100, 3], fill_value=0, dtype=np.uint8), "Preview Image")
+            body['general.preview.img'] = gui.add_image(np.full([100, 100, 3], fill_value=0, dtype=np.uint8), label = "Preview Image")
             def update_preview_img(evt:GuiEvent):
                 w2c, K, img_wh = get_render_cam(evt)
                 if w2c is None: return
@@ -1106,7 +1108,7 @@ def main(ckpt_path='outputs/mb/robot/okish/toy/ckpt.robot.cpkl', port=6060, refr
     if data_dir:
         cfg.data.data_dir = data_dir
     else:
-        cfg.data.data_dir = f'./datasets/iphone/{osp.basename(osp.dirname(ckpt_path))}'
+        cfg.data.data_dir = f'./datasets/robot/{osp.basename(osp.dirname(ckpt_path))}'
     train_dataset, train_video_view, val_img_dataset = train.get_train_val_datasets(cfg.data, load_val=False)
     device = "cuda"
     app_state_path = osp.join(cfg.work_dir, 'app_state.pkl')
