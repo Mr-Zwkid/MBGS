@@ -416,7 +416,8 @@ class MotionBlenderGeneralDataset(MotionBlenderIPhoneDataset):
         for fid in ids:
             intrinsics, extrinsics, img_wh = cvt.from_camera_json(osp.join(data_dir, "camera", f"{fid}.json"))
             self.Ks.append(intrinsics)
-            self.w2cs.append(torch.inverse(extrinsics))
+            self.w2cs.append(extrinsics)
+            print('intrinsics:', intrinsics, '\nextrinsics:', extrinsics)
 
         self.Ks = torch.stack(self.Ks)
         if K_scale != 1:

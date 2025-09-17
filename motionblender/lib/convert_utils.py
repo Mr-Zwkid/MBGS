@@ -12,6 +12,7 @@ def T_transform(transformation_matrix, points):
     transformed_points = transformed_points_homogeneous[:, :3] / transformed_points_homogeneous[:, 3:]
     return transformed_points
 
+
 def get_pointcloud_from_rgb_depth_cam(rgb, depths, c2w, X_2d3d, image_w, image_h):
     """ rgb: [H, W, 3], depths: [H, W], X_WC: [4, 4], X_2d3d: [3, 3] """
     u, v = np.meshgrid(np.arange(image_w), np.arange(image_h))
@@ -39,11 +40,12 @@ def np_RT_from_extrinsics(extrinsics):
     T = X_CW[:3, 3]
     return R, T
 
+
 def extrinsics_from_np_RT(R, T):
     X_CW = np.eye(4)
     X_CW[:3, 3] = T
-    X_CW[:3, :3] = np.transpose(R)
-    extrinsics = torch.from_numpy(np.linalg.inv(X_CW)).float()
+    X_CW[:3, :3] = R
+    extrinsics = torch.from_numpy(X_CW).float()
     return extrinsics
 
 
@@ -91,8 +93,6 @@ def th_projection_matrix_from_fov(znear, zfar, fovX, fovY):
     P[2, 2] = z_sign * zfar / (zfar - znear)
     P[2, 3] = -(zfar * znear) / (zfar - znear)
     return P
-
-
 
 
 def th_intrinsics_from_fov(fovx_rad, fovy_rad, img_w, img_h): # X_2d3d
@@ -159,14 +159,13 @@ def from_camera_json(json_path):
     FovY = focal2fov(cam_json['focal_length'], h)
     FovX = focal2fov(cam_json['focal_length'], w)
     orientation, position = np.asarray(cam_json['orientation']), np.asarray(cam_json['position'])
-    R = orientation.T
-    T = - position @ R
+    R = orientation
+    T = position
     intrinsics = th_intrinsics_from_fov(FovX, FovY, w, h).float()
     extrinsics = extrinsics_from_np_RT(R, T).float()
 
     return intrinsics, extrinsics, [w, h]
 
-    
     
 def knn(x, K: int = 4):
     x_np = x.cpu().numpy()
@@ -191,6 +190,7 @@ def init_splat_dict_from_pcd(pts, rgbs):
         means = pts, colors = rgbs, scales = dist_avg.to(device), 
         quats = rotations.to(device), opacities = 0.1*torch.ones((len(pts),), dtype=torch.float).to(device)
     )
+
 
 def fetch_ply(path):
     plydata = PlyData.read(path)

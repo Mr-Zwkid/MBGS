@@ -5,7 +5,7 @@ shift
 extra_opts=$@
 
 workdir=outputs/robot/$scene
-train_opts="--train-steps 20000"
+train_opts="--train-steps 6000"
 
 case $scene in
     robot)
